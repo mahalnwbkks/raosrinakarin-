@@ -8,16 +8,19 @@ const fs = require('fs');
 const axios = require('axios'); // โมดูลสำหรับส่งข้อมูลหา API ของ LINE
 
 // 🟢 โค้ดเปลี่ยนมาใช้ LINE Messaging API Token ของคุณเรียบร้อยแล้ว
-const LINE_CHANNEL_ACCESS_TOKEN = 'scvQb4rx8otarH1ncxZks5MMDzzlO53ewpi9xRdBkd8vvCnmZJwtuuGol4O7jI5R8yI9aAz98Y3CqJXNzvJtsAwpQTXNR1MrVa0sUBL+3YN2yuJKoM6OwrcDYuHZd8q8AphcIIJG3jUw7zcmCw4A/gdB04t89/1O/w1cDnyilFU='; 
+const LINE_CHANNEL_ACCESS_TOKEN = 'Hc0qtV0xC09Ry7lrPQ24FQdRp9XATOWIOOc4SVa/zc8TotlBGnJkropJ42SZRPu78yI9aAz98Y3CqJXNzvJtsAwpQTXNR1MrVa0sUBL+3YPOMdNZcj1PCU9rDTZ3egbazYAYXFJqv3QJqBVCrslHvgdB04t89/1O/w1cDnyilFU='; 
 
 // 🟢 ใส่ไอดีปลายทางตรงนี้ (ไอดีผู้ใช้ของคุณ ดูได้จากหน้าเว็บหน้าแรกแท็บ Basic settings ตัวล่างสุด หรือ Group ID ของกลุ่ม)
-const LINE_TARGET_ID = 'ใส่_USER_ID_หรือ_GROUP_ID_ตรงนี้'; 
+const LINE_TARGET_ID = 'Ccbf8a8d104dd53e7cfc08e98d48caf2f'; 
 
 const app = express();
 
 // ปลดล็อกระบบรักษาความปลอดภัย CORS เพื่อให้ฝั่งหน้าเว็บเชื่อมต่อได้อย่างสมบูรณ์
 app.use(cors());
-app.use(express.json());
+
+// เพิ่มการจำกัดขนาดไฟล์เป็น 50mb เพื่อรองรับไฟล์รูปภาพสลิปขนาดใหญ่จากมือถือ
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // เปิดให้หน้าเว็บสามารถเข้าถึงไฟล์รูปภาพในโฟลเดอร์ uploads ได้โดยตรงผ่าน URL
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -37,7 +40,12 @@ const storage = multer.diskStorage({
         cb(null, 'slip-' + Date.now() + path.extname(file.originalname));
     }
 });
-const upload = multer({ storage: storage });
+
+// ตั้งค่าข้อจำกัดใน multer ให้รับไฟล์ขนาดใหญ่ขึ้น
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 20 * 1024 * 1024 } 
+});
 
 let db;
 
@@ -58,7 +66,7 @@ async function initDatabase() {
             customer_count INTEGER NOT NULL,
             booking_date TEXT NOT NULL,
             status TEXT DEFAULT 'pending',
-            slip_image TEXT, -- คอลัมน์เก็บชื่อไฟล์รูปภาพสลิป
+            slip_image TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
@@ -74,9 +82,9 @@ async function initDatabase() {
 }
 initDatabase();
 
-// 🟢 ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API (บอท) รูปแบบใหม่
+// ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API
 async function sendLineBotMessage(message) {
-    if (!LINE_CHANNEL_ACCESS_TOKEN || LINE_TARGET_ID === 'ใส่_USER_ID_หรือ_GROUP_ID_ตรงนี้') {
+    if (!LINE_CHANNEL_ACCESS_TOKEN || !LINE_TARGET_ID || LINE_TARGET_ID === '') {
         console.log('⚠️ ยังไม่ได้ระบุ Token หรือ Target ID ข้ามการแจ้งเตือน');
         return;
     }
@@ -115,10 +123,10 @@ app.get('/api/booked-tables', async (req, res) => {
     }
 });
 
-// 🔄 API จองโต๊ะ รองรับการอัปโหลดไฟล์รูปภาพพร้อมกัน + ยิงเข้า LINE บอท
+// API จองโต๊ะ รองรับการอัปโหลดไฟล์รูปภาพพร้อมกัน + ยิงเข้า LINE บอท
 app.post('/api/book-table', upload.single('slip'), async (req, res) => {
     const { table_id, concert_id, customer_name, customer_phone, customer_count, booking_date } = req.body;
-    const slip_image = req.file ? req.file.filename : null; // ดึงชื่อไฟล์รูปที่เซฟได้
+    const slip_image = req.file ? req.file.filename : null;
 
     try {
         const isAlreadyBooked = await db.get(
@@ -136,10 +144,8 @@ app.post('/api/book-table', upload.single('slip'), async (req, res) => {
             [table_id, concert_id, customer_name, customer_phone, customer_count, booking_date, slip_image]
         );
 
-        // 🔔 เปลี่ยนข้อความส่งแจ้งเตือนเข้าแชทไลน์ผ่านบอท
         const lineMessage = `📢 มีรายการจองโต๊ะใหม่เข้ามา!\n📌 หมายเลขโต๊ะ: ${table_id}\n👤 ชื่อลูกค้า: ${customer_name}\n📞 เบอร์โทรศัพท์: ${customer_phone}\n👥 จำนวนคน: ${customer_count} ท่าน\n📅 วันที่จอง: ${booking_date}\n\n👉 ตรวจสอบรูปภาพสลิปเงินและกดยืนยันผ่านระบบหลังบ้านแอดมินนะครับ!`;
         
-        // เรียกฟังก์ชันส่งไลน์ผ่านบอทใหม่
         sendLineBotMessage(lineMessage);
 
         res.json({ success: true, message: 'บันทึกข้อมูลและอัปโหลดสลิปสำเร็จ!' });
@@ -170,11 +176,12 @@ app.post('/api/admin/approve', async (req, res) => {
 app.post('/api/admin/delete', async (req, res) => {
     const { id } = req.body;
     try {
-        // ดึงชื่อไฟล์ภาพมาลบออกจากเครื่องด้วยเพื่อประหยัดพื้นที่
         const booking = await db.get(`SELECT slip_image FROM bookings WHERE id = ?`, [id]);
-        if(booking && booking.slip_image) {
+        if (booking && booking.slip_image) {
             const filePath = path.join(__dirname, 'uploads', booking.slip_image);
-            if(fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
         }
         await db.run(`DELETE FROM bookings WHERE id = ?`, [id]);
         res.json({ success: true, message: "ยกเลิกการจองและลบข้อมูลแล้ว" });
