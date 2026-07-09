@@ -5,6 +5,10 @@ const sqlite3 = require('sqlite3');
 const path = require('path');
 const multer = require('multer'); // โมดูลสำหรับจัดการไฟล์อัปโหลด
 const fs = require('fs');
+const axios = require('axios'); // 🟢 เพิ่มโมดูลสำหรับส่งข้อมูลหา API ของ LINE
+
+// 🟢 ใส่ Token Line Notify ของคุณตรงนี้ (นำ Token ที่ได้จากเว็บ Line Notify มาใส่แทนข้อความนี้)
+const LINE_NOTIFY_TOKEN = 'scvQb4rx8otarH1ncxZks5MMDzzlO53ewpi9xRdBkd8vvCnmZJwtuuGol4O7jI5R8yI9aAz98Y3CqJXNzvJtsAwpQTXNR1MrVa0sUBL+3YN2yuJKoM6OwrcDYuHZd8q8AphcIIJG3jUw7zcmCw4A/gdB04t89/1O/w1cDnyilFU='; 
 
 const app = express();
 
@@ -67,6 +71,35 @@ async function initDatabase() {
 }
 initDatabase();
 
+// 🟢 ฟังก์ชันสำหรับส่งแจ้งเตือนเข้า Line Notify พร้อมรูปสลิป
+async function sendLineNotify(message, imagePath = null) {
+    if (!LINE_NOTIFY_TOKEN || LINE_NOTIFY_TOKEN === 'YOUR_LINE_NOTIFY_TOKEN_HERE') {
+        console.log('⚠️ ยังไม่ได้ระบุ Line Notify Token ข้ามการส่งแจ้งเตือน');
+        return;
+    }
+    
+    try {
+        const FormData = require('form-data');
+        const formData = new FormData();
+        formData.append('message', message);
+        
+        // ถ้ามีรูปสลิปอัปโหลดเข้ามา ให้ส่งแนบไปในไลน์ด้วย
+        if (imagePath && fs.existsSync(imagePath)) {
+            formData.append('imageFile', fs.createReadStream(imagePath));
+        }
+
+        await axios.post('https://notify-api.line.me/api/notify', formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'Authorization': `Bearer ${LINE_NOTIFY_TOKEN}`
+            }
+        });
+        console.log('🔔 แจ้งเตือนผ่าน Line Notify เรียบร้อยแล้ว!');
+    } catch (error) {
+        console.error('❌ ส่ง Line Notify ล้มเหลว:', error.response ? error.response.data : error.message);
+    }
+}
+
 app.get('/api/booked-tables', async (req, res) => {
     const { concert_id, date } = req.query;
     try {
@@ -78,7 +111,7 @@ app.get('/api/booked-tables', async (req, res) => {
     }
 });
 
-// 🔄 API จองโต๊ะ รองรับการอัปโหลดไฟล์รูปภาพพร้อมกัน
+// 🔄 API จองโต๊ะ รองรับการอัปโหลดไฟล์รูปภาพพร้อมกัน + ยิงเข้า LINE
 app.post('/api/book-table', upload.single('slip'), async (req, res) => {
     const { table_id, concert_id, customer_name, customer_phone, customer_count, booking_date } = req.body;
     const slip_image = req.file ? req.file.filename : null; // ดึงชื่อไฟล์รูปที่เซฟได้
@@ -98,6 +131,13 @@ app.post('/api/book-table', upload.single('slip'), async (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [table_id, concert_id, customer_name, customer_phone, customer_count, booking_date, slip_image]
         );
+
+        // 🔔 ส่งข้อความแจ้งเตือนแอดมินใน Line ทันที
+        const lineMessage = `\n📢 มีรายการจองโต๊ะใหม่เข้ามา!\n📌 โต๊ะ: ${table_id}\n👤 ชื่อลูกค้า: ${customer_name}\n📞 เบอร์โทร: ${customer_phone}\n👥 จำนวน: ${customer_count} ท่าน\n📅 วันที่จอง: ${booking_date}\n\n👉 ตรวจสอบสลิปและอนุมัติที่หน้า Admin ด่วน!`;
+        const imagePath = req.file ? path.join(__dirname, 'uploads', req.file.filename) : null;
+        
+        // เรียกฟังก์ชันส่ง Line
+        sendLineNotify(lineMessage, imagePath);
 
         res.json({ success: true, message: 'บันทึกข้อมูลและอัปโหลดสลิปสำเร็จ!' });
     } catch (error) {
