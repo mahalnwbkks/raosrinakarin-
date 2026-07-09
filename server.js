@@ -82,22 +82,34 @@ async function initDatabase() {
 }
 initDatabase();
 
-// ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API
-async function sendLineBotMessage(message) {
+// 🛠️ แก้ไขฟังก์ชัน: ให้รองรับการส่งทั้งข้อความและ URL รูปภาพสลิปพร้อมกัน
+async function sendLineBotMessage(message, imageUrl = null) {
     if (!LINE_CHANNEL_ACCESS_TOKEN || !LINE_TARGET_ID || LINE_TARGET_ID === '') {
         console.log('⚠️ ยังไม่ได้ระบุ Token หรือ Target ID ข้ามการแจ้งเตือน');
         return;
     }
     
     try {
+        // เริ่มต้นด้วยการใส่ข้อความรายละเอียดการจอง
+        const messagesPayload = [
+            {
+                type: 'text',
+                text: message
+            }
+        ];
+
+        // 🛠️ ถ้ามี URL รูปภาพสลิปส่งมาด้วย ให้ดันประเภท image เข้าไปในลิสต์ข้อความ
+        if (imageUrl) {
+            messagesPayload.push({
+                type: 'image',
+                originalContentUrl: imageUrl,
+                previewImageUrl: imageUrl
+            });
+        }
+
         const linePayload = {
             to: LINE_TARGET_ID,
-            messages: [
-                {
-                    type: 'text',
-                    text: message
-                }
-            ]
+            messages: messagesPayload
         };
 
         await axios.post('https://api.line.me/v2/bot/message/push', linePayload, {
@@ -106,7 +118,7 @@ async function sendLineBotMessage(message) {
                 'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`
             }
         });
-        console.log('🔔 แจ้งเตือนผ่าน LINE บอทเรียบร้อยแล้ว!');
+        console.log('🔔 แจ้งเตือนพร้อมรูปภาพสลิปส่งเข้า LINE เรียบร้อยแล้ว!');
     } catch (error) {
         console.error('❌ ส่งข้อความเข้า LINE ล้มเหลว:', error.response ? error.response.data : error.message);
     }
@@ -144,9 +156,16 @@ app.post('/api/book-table', upload.single('slip'), async (req, res) => {
             [table_id, concert_id, customer_name, customer_phone, customer_count, booking_date, slip_image]
         );
 
-        const lineMessage = `📢 มีรายการจองโต๊ะใหม่เข้ามา!\n📌 หมายเลขโต๊ะ: ${table_id}\n👤 ชื่อลูกค้า: ${customer_name}\n📞 เบอร์โทรศัพท์: ${customer_phone}\n👥 จำนวนคน: ${customer_count} ท่าน\n📅 วันที่จอง: ${booking_date}\n\n👉 ตรวจสอบรูปภาพสลิปเงินและกดยืนยันผ่านระบบหลังบ้านแอดมินนะครับ!`;
+        const lineMessage = `📢 มีรายการจองโต๊ะใหม่เข้ามา!\n📌 หมายเลขโต๊ะ: ${table_id}\n👤 ชื่อลูกค้า: ${customer_name}\n📞 เบอร์โทรศัพท์: ${customer_phone}\n👥 จำนวนคน: ${customer_count} ท่าน\n📅 วันที่จอง: ${booking_date}\n\n👉 ตรวจสอบรูปภาพสลิปเงินด้านล่างนี้ได้เลยครับ!`;
         
-        sendLineBotMessage(lineMessage);
+        // 🛠️ สร้าง URL รูปภาพสลิปที่ทำงานอยู่บน Render เพื่อส่งให้ LINE ดึงภาพไปแสดง
+        let slipUrl = null;
+        if (slip_image) {
+            slipUrl = `https://raosrinakarin-get-concert-and-party.onrender.com/uploads/${slip_image}`;
+        }
+        
+        // ส่งข้อความพร้อมแนบ URL สลิป
+        sendLineBotMessage(lineMessage, slipUrl);
 
         res.json({ success: true, message: 'บันทึกข้อมูลและอัปโหลดสลิปสำเร็จ!' });
     } catch (error) {
