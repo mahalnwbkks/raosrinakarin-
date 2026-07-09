@@ -96,7 +96,7 @@
                     </div>
                 </div>
 
-                <form id="booking-form" class="space-y-3" onsubmit="event.preventDefault(); handlePayment();">
+                <form id="booking-form" class="space-y-3" onsubmit="event.preventDefault(); showPaymentSection();">
                     <div>
                         <label class="block text-xs text-gray-400 mb-1">ชื่อผู้จอง</label>
                         <input type="text" id="cust-name" required placeholder="เช่น คุณสมชาย ใจดี" class="w-full bg-gray-800 border border-gray-750 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 text-white">
@@ -144,11 +144,17 @@
                     <p id="paymentNote" class="text-xs text-yellow-400 font-bold mb-3"></p>
                     
                     <div class="bg-white p-3 inline-block rounded-xl mb-2">
-                        <img id="qr-image" src="" alt="PromptPay QR Code" class="w-48 h-48 mx-auto object-contain">
+                        <img id="qr-image" src="my-promptpay.jpg" alt="PromptPay QR Code" class="w-48 h-48 mx-auto object-contain">
                     </div>
-                    <p class="text-xs text-rose-400 font-medium mb-4">⚠️ กรุณาชำระเงินภายใน 5 นาทีเพื่อล็อกโต๊ะไว้</p>
-                    <button onclick="confirmBooking()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-bold py-2.5 rounded-lg text-sm transition">
-                        ฉันชำระเงินเรียบร้อยแล้ว
+                    
+                    <div class="mt-4 mb-4 text-left bg-gray-950 p-3 rounded-xl border border-gray-850">
+                        <label class="block text-xs font-semibold text-gray-400 mb-2">📎 อัปโหลดรูปภาพสลิปโอนเงิน:</label>
+                        <input type="file" id="slip-file" accept="image/*" class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-yellow-500 file:text-gray-950 hover:file:bg-yellow-400 cursor-pointer">
+                    </div>
+
+                    <p class="text-xs text-rose-400 font-medium mb-4">⚠️ กรุณาชำระเงินและแนบสลิปเพื่อล็อกโต๊ะ</p>
+                    <button onclick="handlePaymentWithSlip()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-bold py-2.5 rounded-lg text-sm transition">
+                        ส่งหลักฐานการโอนเงิน
                     </button>
                 </div>
 
@@ -158,7 +164,6 @@
     </div>
 
     <script>
-        // กำหนด URL หลังบ้าน (เปลี่ยนเป็น Domain จริงเมื่อนำขึ้นเซิร์ฟเวอร์ยิงขึ้นคลาวด์)
         const BACKEND_URL = "http://localhost:3000";
 
         const concertPrices = {
@@ -202,12 +207,9 @@
             container.style.transform = `scale(1.0) translate(0%, 0%)`;
         }
 
-        // 🔄 ฟังก์ชันดึงข้อมูลจากหลังบ้าน (ปรับปรุงให้มีระบบเซฟตี้)
         async function refreshBookedTables() {
             const concertId = document.getElementById('concert').value;
             const bookingDate = document.getElementById('booking-date').value;
-
-            // เคลียร์ปุ่มเก่าบนหน้าเว็บออกก่อนเสมอ
             clearTableZones();
 
             try {
@@ -217,19 +219,14 @@
                 if (data.success) {
                     bookedTables.length = 0; 
                     data.bookedTables.forEach(table => bookedTables.push(table));
-                    
-                    initTables(); // วาดปุ่มโดยใช้ข้อมูลโต๊ะที่จองจากหลังบ้าน
-
+                    initTables();
                     if (selectedTable && bookedTables.includes(selectedTable)) {
                         resetSelection();
                     }
                 } else {
-                    // หากหลังบ้านตอบกลับมาไม่สำเร็จ ให้วาดโต๊ะแบบไม่มีประวัติการจองไปก่อน
                     initTables();
                 }
             } catch (error) {
-                console.warn("⚠️ เชื่อมต่อหลังบ้านไม่สำเร็จ (ระบบรันโหมด Offline ให้ชั่วคราว):", error);
-                // 🛡️ระบบเซฟตี้: ถ้าหลังบ้านยังไม่เปิด ให้แสดงปุ่มโต๊ะทั้งหมดเป็นโต๊ะว่างไปก่อน หน้าเว็บจะได้ไม่โล่ง
                 bookedTables.length = 0;
                 initTables();
             }
@@ -315,7 +312,6 @@
             
             if (tableCoordinates[id]) {
                 const coords = tableCoordinates[id];
-                
                 highlightPing.style.left = `${coords.x}%`;
                 highlightPing.style.top = `${coords.y}%`;
                 highlightPing.style.transform = 'translate(-50%, -50%)';
@@ -331,11 +327,6 @@
                 const moveY = (50 - coords.y) * 1.8;
                 zoomContainer.style.transform = `scale(1.8) translate(${moveX}%, ${moveY}%)`;
                 currentScale = 1.8;
-            } else {
-                highlightPing.classList.add('hidden');
-                highlightSolid.classList.add('hidden');
-                zoomContainer.style.transform = 'scale(1) translate(0%, 0%)';
-                currentScale = 1.0;
             }
 
             const submitBtn = document.getElementById('btn-submit');
@@ -344,59 +335,52 @@
             submitBtn.innerText = "ดำเนินการชำระเงิน";
         }
 
-        async function handlePayment() {
-            if (!selectedTable) {
-                alert('❌ กรุณาเลือกโต๊ะก่อนการชำระเงินครับ');
+        function showPaymentSection() {
+            if (!selectedTable) return;
+            const currentConcert = document.getElementById('concert').value;
+            const currentPrice = concertPrices[currentConcert] || 5000;
+            
+            document.getElementById('payment-section').classList.remove('hidden');
+            const noteText = document.getElementById("paymentNote");
+            if(noteText) {
+                noteText.innerText = `👉 โต๊ะ ${selectedTable} ยอดโอนสุทธิ: ${currentPrice.toLocaleString()} บาท`;
+            }
+            document.getElementById('payment-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 🔄 ฟังก์ชันส่งข้อมูลการจองพร้อมอัปโหลดไฟล์ภาพสลิปเข้าหลังบ้าน
+        async function handlePaymentWithSlip() {
+            const fileInput = document.getElementById('slip-file');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('⚠️ กรุณาเลือกและแนบภาพสลิปหลักฐานการโอนเงินก่อนส่งข้อมูลครับ');
                 return;
             }
 
             const currentConcert = document.getElementById('concert').value;
-            const currentPrice = concertPrices[currentConcert] || 5000;
-            
-            const payload = {
-                table_id: selectedTable,
-                concert_id: currentConcert,
-                customer_name: document.getElementById('cust-name').value,
-                customer_phone: document.getElementById('cust-phone').value,
-                customer_count: parseInt(document.getElementById('cust-count').value),
-                booking_date: document.getElementById('booking-date').value
-            };
+            const formData = new FormData();
+            formData.append('table_id', selectedTable);
+            formData.append('concert_id', currentConcert);
+            formData.append('customer_name', document.getElementById('cust-name').value);
+            formData.append('customer_phone', document.getElementById('cust-phone').value);
+            formData.append('customer_count', parseInt(document.getElementById('cust-count').value));
+            formData.append('booking_date', document.getElementById('booking-date').value);
+            formData.append('slip', fileInput.files[0]); 
 
             try {
                 const response = await fetch(`${BACKEND_URL}/api/book-table`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: formData
                 });
                 
                 const data = await response.json();
-
-                if (!data.success) {
+                if (data.success) {
+                    alert(`🎉 ส่งข้อมูลและแนบหลักฐานสำเร็จ!\n\nระบบจองได้ส่งยอดเรียบร้อย รอแอดมินอนุมัติความถูกต้องครับ`);
+                    window.location.reload();
+                } else {
                     alert(data.message);
-                    refreshBookedTables();
-                    return;
                 }
-
-                document.getElementById('payment-section').classList.remove('hidden');
-                
-                const qrImg = document.getElementById("qr-image");
-                qrImg.src = "my-promptpay.jpg"; 
-                
-                const noteText = document.getElementById("paymentNote");
-                if(noteText) {
-                    noteText.innerText = `👉 โต๊ะ ${selectedTable} ยอดโอนสุทธิ: ${currentPrice.toLocaleString()} บาท`;
-                }
-                
-                document.getElementById('payment-section').scrollIntoView({ behavior: 'smooth' });
-
             } catch (error) {
-                alert("เกิดข้อผิดพลาดในการติดต่อเซิร์ฟเวอร์หลังบ้าน แต่คุณยังสามารถสแกนจ่ายเพื่อแจ้งทางร้านแบบเดิมได้ครับ");
-                // เผื่อหลังบ้านดับ กล่องชำระเงินก็ยังทำงานแบบเดิมให้ได้
-                document.getElementById('payment-section').classList.remove('hidden');
-                document.getElementById('qr-image').src = "my-promptpay.jpg";
-                if(document.getElementById("paymentNote")) {
-                    document.getElementById("paymentNote").innerText = `👉 โต๊ะ ${selectedTable} ยอดโอนสุทธิ: ${currentPrice.toLocaleString()} บาท`;
-                }
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์เพื่ออัปโหลดไฟล์");
             }
         }
 
@@ -413,23 +397,8 @@
             }
         }
 
-        function confirmBooking() {
-            const name = document.getElementById('cust-name').value;
-            const phone = document.getElementById('cust-phone').value;
-            const date = document.getElementById('booking-date').value;
-
-            if (phone.length < 9 || phone.length > 10) {
-                alert("⚠️ กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (9-10 หลัก)");
-                return false;
-            }
-
-            alert(`🎉 แจ้งชำระเงินสำเร็จ!\n\nระบบได้รับข้อมูลแล้ว รอยืนยันโต๊ะ ${selectedTable} ของคุณ ${name} ในวันที่ ${date}`);
-            window.location.reload();
-        }
-
         document.getElementById('concert').addEventListener('change', refreshBookedTables);
         document.getElementById('booking-date').addEventListener('change', refreshBookedTables);
-        
         window.addEventListener('DOMContentLoaded', refreshBookedTables);
     </script>
 </body>

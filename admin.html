@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการการจองหลังบ้าน (Admin Dashboard)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen p-6">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-yellow-500">ระบบแอดมินร้าน RAO SRINAKARIN</h1>
+                <p class="text-sm text-gray-400">ตรวจสอบสลิปการโอนเงิน คิวจอง และกดยืนยันโต๊ะ</p>
+            </div>
+            <button onclick="fetchBookings()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-sm transition cursor-pointer">
+                🔄 รีเฟรชข้อมูลคิว
+            </button>
+        </header>
+
+        <div class="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-850 border-b border-gray-800 text-gray-400 text-sm">
+                            <th class="p-4">วันที่คอนเสิร์ต</th>
+                            <th class="p-4">โต๊ะ</th>
+                            <th class="p-4">ชื่อลูกค้า</th>
+                            <th class="p-4">เบอร์โทรศัพท์</th>
+                            <th class="p-4 text-center">จำนวนคน</th>
+                            <th class="p-4">สถานะเงิน</th>
+                            <th class="p-4 text-right">จัดการระบบ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="booking-list-table">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = "http://localhost:3000";
+
+        async function fetchBookings() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/admin/bookings`);
+                const data = await response.json();
+                
+                const tableBody = document.getElementById('booking-list-table');
+                tableBody.innerHTML = '';
+
+                if (!data.success || data.bookings.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-gray-500">ยังไม่มีข้อมูลลูกค้าเข้ามาจองในระบบ</td></tr>`;
+                    return;
+                }
+
+                data.bookings.forEach(booking => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-800 hover:bg-gray-850/50 transition text-sm";
+                    
+                    // ตั้งค่าสีป้ายสถานะ
+                    let statusBadge = '';
+                    if(booking.status === 'confirmed') {
+                        statusBadge = `<span class="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-full font-medium text-xs border border-emerald-500/20">ชำระเงินแล้ว</span>`;
+                    } else {
+                        statusBadge = `<span class="bg-amber-500/10 text-amber-400 px-2.5 py-1 rounded-full font-medium text-xs border border-amber-500/20">รอเช็คสลิป</span>`;
+                    }
+
+                    // สร้างปุ่มตรวจสลิป และ อนุมัติคิว
+                    let actionButtons = '';
+                    
+                    if(booking.slip_image) {
+                        // ปุ่มกดเปิดดูรูปสลิปตัวจริงขึ้นแท็บใหม่
+                        actionButtons += `<a href="${BACKEND_URL}/uploads/${booking.slip_image}" target="_blank" class="bg-blue-500/10 hover:bg-blue-500 hover:text-white text-blue-400 font-bold px-3 py-1.5 rounded-lg mr-2 transition text-xs inline-block">👁️ ดูสลิป</a>`;
+                    } else {
+                        actionButtons += `<span class="text-gray-600 text-xs mr-3 inline-block">ไม่มีไฟล์สลิป</span>`;
+                    }
+
+                    if(booking.status !== 'confirmed') {
+                        actionButtons += `<button onclick="approveBooking(${booking.id})" class="bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-bold px-3 py-1.5 rounded-lg mr-2 transition cursor-pointer text-xs">Approve</button>`;
+                    }
+                    actionButtons += `<button onclick="deleteBooking(${booking.id})" class="bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 px-3 py-1.5 rounded-lg transition cursor-pointer text-xs">เคลียร์โต๊ะ</button>`;
+
+                    tr.innerHTML = `
+                        <td class="p-4 font-mono text-gray-300">${booking.booking_date}</td>
+                        <td class="p-4"><span class="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg font-bold border border-yellow-500/20">${booking.table_id}</span></td>
+                        <td class="p-4 font-medium">${booking.customer_name}</td>
+                        <td class="p-4 font-mono text-gray-400">${booking.customer_phone}</td>
+                        <td class="p-4 text-center text-gray-300">${booking.customer_count} ท่าน</td>
+                        <td class="p-4">${statusBadge}</td>
+                        <td class="p-4 text-right">${actionButtons}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+
+            } catch (error) {
+                console.error("Error fetching bookings:", error);
+            }
+        }
+
+        async function approveBooking(id) {
+            if(!confirm("ตรวจสอบสลิปและยืนยันยอดเงินเรียบร้อยแล้วใช่ไหมครับ?")) return;
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/admin/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await response.json();
+                if(data.success) {
+                    fetchBookings();
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+            }
+        }
+
+        async function deleteBooking(id) {
+            if(!confirm("⚠️ แน่ใจใช่ไหมที่จะยกเลิกและเคลียร์โต๊ะนี้ให้กลับมาว่างอีกครั้ง?")) return;
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/admin/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await response.json();
+                if(data.success) {
+                    fetchBookings();
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                alert("เกิดข้อผิดพลาดในการลบข้อมูล");
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', fetchBookings);
+    </script>
+</body>
+</html>
