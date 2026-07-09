@@ -3,10 +3,12 @@ const cors = require('cors');
 const { open } = require('sqlite');
 const sqlite3 = require('sqlite3');
 const path = require('path');
-const multer = require('multer'); // เพิ่มโมดูลสำหรับจัดการไฟล์อัปโหลด
+const multer = require('multer'); // โมดูลสำหรับจัดการไฟล์อัปโหลด
 const fs = require('fs');
 
 const app = express();
+
+// ปลดล็อกระบบรักษาความปลอดภัย CORS เพื่อให้ฝั่งหน้าเว็บเชื่อมต่อได้อย่างสมบูรณ์
 app.use(cors());
 app.use(express.json());
 
@@ -76,7 +78,7 @@ app.get('/api/booked-tables', async (req, res) => {
     }
 });
 
-// 🔄 ปรับปรุง API จองโต๊ะ ให้รองรับการอัปโหลดไฟล์รูปภาพพร้อมกัน
+// 🔄 API จองโต๊ะ รองรับการอัปโหลดไฟล์รูปภาพพร้อมกัน
 app.post('/api/book-table', upload.single('slip'), async (req, res) => {
     const { table_id, concert_id, customer_name, customer_phone, customer_count, booking_date } = req.body;
     const slip_image = req.file ? req.file.filename : null; // ดึงชื่อไฟล์รูปที่เซฟได้
