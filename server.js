@@ -5,10 +5,13 @@ const sqlite3 = require('sqlite3');
 const path = require('path');
 const multer = require('multer'); // โมดูลสำหรับจัดการไฟล์อัปโหลด
 const fs = require('fs');
-const axios = require('axios'); // 🟢 เพิ่มโมดูลสำหรับส่งข้อมูลหา API ของ LINE
+const axios = require('axios'); // โมดูลสำหรับส่งข้อมูลหา API ของ LINE
 
-// 🟢 ใส่ Token Line Notify ของคุณตรงนี้ (นำ Token ที่ได้จากเว็บ Line Notify มาใส่แทนข้อความนี้)
-const LINE_NOTIFY_TOKEN = 'scvQb4rx8otarH1ncxZks5MMDzzlO53ewpi9xRdBkd8vvCnmZJwtuuGol4O7jI5R8yI9aAz98Y3CqJXNzvJtsAwpQTXNR1MrVa0sUBL+3YN2yuJKoM6OwrcDYuHZd8q8AphcIIJG3jUw7zcmCw4A/gdB04t89/1O/w1cDnyilFU='; 
+// 🟢 โค้ดเปลี่ยนมาใช้ LINE Messaging API Token ของคุณเรียบร้อยแล้ว
+const LINE_CHANNEL_ACCESS_TOKEN = 'scvQb4rx8otarH1ncxZks5MMDzzlO53ewpi9xRdBkd8vvCnmZJwtuuGol4O7jI5R8yI9aAz98Y3CqJXNzvJtsAwpQTXNR1MrVa0sUBL+3YN2yuJKoM6OwrcDYuHZd8q8AphcIIJG3jUw7zcmCw4A/gdB04t89/1O/w1cDnyilFU='; 
+
+// 🟢 ใส่ไอดีปลายทางตรงนี้ (ไอดีผู้ใช้ของคุณ ดูได้จากหน้าเว็บหน้าแรกแท็บ Basic settings ตัวล่างสุด หรือ Group ID ของกลุ่ม)
+const LINE_TARGET_ID = 'ใส่_USER_ID_หรือ_GROUP_ID_ตรงนี้'; 
 
 const app = express();
 
@@ -71,32 +74,33 @@ async function initDatabase() {
 }
 initDatabase();
 
-// 🟢 ฟังก์ชันสำหรับส่งแจ้งเตือนเข้า Line Notify พร้อมรูปสลิป
-async function sendLineNotify(message, imagePath = null) {
-    if (!LINE_NOTIFY_TOKEN || LINE_NOTIFY_TOKEN === 'YOUR_LINE_NOTIFY_TOKEN_HERE') {
-        console.log('⚠️ ยังไม่ได้ระบุ Line Notify Token ข้ามการส่งแจ้งเตือน');
+// 🟢 ฟังก์ชันส่งข้อความแจ้งเตือนผ่าน LINE Messaging API (บอท) รูปแบบใหม่
+async function sendLineBotMessage(message) {
+    if (!LINE_CHANNEL_ACCESS_TOKEN || LINE_TARGET_ID === 'ใส่_USER_ID_หรือ_GROUP_ID_ตรงนี้') {
+        console.log('⚠️ ยังไม่ได้ระบุ Token หรือ Target ID ข้ามการแจ้งเตือน');
         return;
     }
     
     try {
-        const FormData = require('form-data');
-        const formData = new FormData();
-        formData.append('message', message);
-        
-        // ถ้ามีรูปสลิปอัปโหลดเข้ามา ให้ส่งแนบไปในไลน์ด้วย
-        if (imagePath && fs.existsSync(imagePath)) {
-            formData.append('imageFile', fs.createReadStream(imagePath));
-        }
+        const linePayload = {
+            to: LINE_TARGET_ID,
+            messages: [
+                {
+                    type: 'text',
+                    text: message
+                }
+            ]
+        };
 
-        await axios.post('https://notify-api.line.me/api/notify', formData, {
+        await axios.post('https://api.line.me/v2/bot/message/push', linePayload, {
             headers: {
-                ...formData.getHeaders(),
-                'Authorization': `Bearer ${LINE_NOTIFY_TOKEN}`
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${LINE_CHANNEL_ACCESS_TOKEN}`
             }
         });
-        console.log('🔔 แจ้งเตือนผ่าน Line Notify เรียบร้อยแล้ว!');
+        console.log('🔔 แจ้งเตือนผ่าน LINE บอทเรียบร้อยแล้ว!');
     } catch (error) {
-        console.error('❌ ส่ง Line Notify ล้มเหลว:', error.response ? error.response.data : error.message);
+        console.error('❌ ส่งข้อความเข้า LINE ล้มเหลว:', error.response ? error.response.data : error.message);
     }
 }
 
@@ -111,7 +115,7 @@ app.get('/api/booked-tables', async (req, res) => {
     }
 });
 
-// 🔄 API จองโต๊ะ รองรับการอัปโหลดไฟล์รูปภาพพร้อมกัน + ยิงเข้า LINE
+// 🔄 API จองโต๊ะ รองรับการอัปโหลดไฟล์รูปภาพพร้อมกัน + ยิงเข้า LINE บอท
 app.post('/api/book-table', upload.single('slip'), async (req, res) => {
     const { table_id, concert_id, customer_name, customer_phone, customer_count, booking_date } = req.body;
     const slip_image = req.file ? req.file.filename : null; // ดึงชื่อไฟล์รูปที่เซฟได้
@@ -132,12 +136,11 @@ app.post('/api/book-table', upload.single('slip'), async (req, res) => {
             [table_id, concert_id, customer_name, customer_phone, customer_count, booking_date, slip_image]
         );
 
-        // 🔔 ส่งข้อความแจ้งเตือนแอดมินใน Line ทันที
-        const lineMessage = `\n📢 มีรายการจองโต๊ะใหม่เข้ามา!\n📌 โต๊ะ: ${table_id}\n👤 ชื่อลูกค้า: ${customer_name}\n📞 เบอร์โทร: ${customer_phone}\n👥 จำนวน: ${customer_count} ท่าน\n📅 วันที่จอง: ${booking_date}\n\n👉 ตรวจสอบสลิปและอนุมัติที่หน้า Admin ด่วน!`;
-        const imagePath = req.file ? path.join(__dirname, 'uploads', req.file.filename) : null;
+        // 🔔 เปลี่ยนข้อความส่งแจ้งเตือนเข้าแชทไลน์ผ่านบอท
+        const lineMessage = `📢 มีรายการจองโต๊ะใหม่เข้ามา!\n📌 หมายเลขโต๊ะ: ${table_id}\n👤 ชื่อลูกค้า: ${customer_name}\n📞 เบอร์โทรศัพท์: ${customer_phone}\n👥 จำนวนคน: ${customer_count} ท่าน\n📅 วันที่จอง: ${booking_date}\n\n👉 ตรวจสอบรูปภาพสลิปเงินและกดยืนยันผ่านระบบหลังบ้านแอดมินนะครับ!`;
         
-        // เรียกฟังก์ชันส่ง Line
-        sendLineNotify(lineMessage, imagePath);
+        // เรียกฟังก์ชันส่งไลน์ผ่านบอทใหม่
+        sendLineBotMessage(lineMessage);
 
         res.json({ success: true, message: 'บันทึกข้อมูลและอัปโหลดสลิปสำเร็จ!' });
     } catch (error) {
