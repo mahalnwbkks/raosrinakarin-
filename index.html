@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจองโต๊ะ - RAO SRINAKARIN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .table-btn {
+            transition: all 0.2s;
+        }
+        .table-btn:hover:not(.booked) {
+            transform: scale(1.15);
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans min-h-screen pb-12">
+
+    <header class="bg-gray-900 border-b border-gray-850 p-6 text-center shadow-lg">
+        <h1 class="text-3xl font-bold text-yellow-500 tracking-wide">RAO SRINAKARIN</h1>
+        <p class="text-gray-400 text-sm mt-1">ระบบจองโต๊ะและห้องคาราโอเกะคอนเสิร์ต</p>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-4 mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-2 space-y-6">
+            
+            <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-yellow-400 flex items-center">
+                    <span class="bg-yellow-500 text-gray-950 w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-bold mr-2">1</span>
+                    ข้อมูลคอนเสิร์ต
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">เลือกคอนเสิร์ต</label>
+                        <select id="concert" class="w-full bg-gray-800 border border-gray-750 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-500">
+                            <option value="concert-1">SEK LOSO Live Concert (บัตร 5,800 เข้าได้ 4 ท่านแบล็ค 1 ขวด ฟรีมิกเซอร์ .- / โต๊ะ)</option>
+                            <option value="concert-2">PARADOX Live Concert (บัตร 5,000 เข้าได้ 4 ท่านแบล็ค 1 ขวด ฟรีมิกเซอร์ / โต๊ะ)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">เลือกวันที่ทำการจอง</label>
+                        <input type="date" id="booking-date" value="2026-07-15" class="w-full bg-gray-800 border border-gray-750 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-md">
+                <h2 class="text-xl font-semibold mb-2 text-yellow-400 flex items-center">
+                    <span class="bg-yellow-500 text-gray-950 w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-bold mr-2">2</span>
+                    เลือกตำแหน่งโต๊ะ / ห้องวีไอพี
+                </h2>
+                <p class="text-xs text-gray-400 mb-6">* คลิกเลือกโต๊ะที่ต้องการจากโซนด้านล่างนี้</p>
+
+                <div class="flex gap-4 mb-6 text-sm bg-gray-950 p-3 rounded-xl justify-center">
+                    <div class="flex items-center gap-1.5"><span class="w-4 h-4 bg-emerald-500 rounded-full inline-block"></span> ว่าง</div>
+                    <div class="flex items-center gap-1.5"><span class="w-4 h-4 bg-amber-500 rounded-full inline-block"></span> กำลังเลือก</div>
+                    <div class="flex items-center gap-1.5"><span class="w-4 h-4 bg-rose-600 rounded-full inline-block"></span> จองแล้ว</div>
+                </div>
+
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-300 mb-3 border-l-2 border-purple-500 pl-2">ห้องคาราโอเกะ VIP (10 ห้อง)</h3>
+                        <div id="karaoke-zone" class="grid grid-cols-5 gap-2"></div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-300 mb-3 border-l-2 border-blue-500 pl-2">โซนบนโซฟา (5 โซน)</h3>
+                        <div id="sofa-zone" class="grid grid-cols-5 gap-2"></div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-300 mb-3 border-l-2 border-amber-500 pl-2">โซนโต๊ะปกติรอบเวที (ตามผังร้าน)</h3>
+                        <div id="main-floor-zone" class="grid grid-cols-6 sm:grid-cols-8 gap-2 bg-gray-950 p-4 rounded-xl"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-md sticky top-6">
+                <h2 class="text-xl font-semibold mb-4 text-yellow-400 flex items-center">
+                    <span class="bg-yellow-500 text-gray-950 w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-bold mr-2">3</span>
+                    รายละเอียดการจอง
+                </h2>
+
+                <div class="bg-gray-950 p-4 rounded-xl mb-4 border border-gray-850">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-400">โต๊ะที่เลือก:</span>
+                        <span id="summary-table" class="font-bold text-yellow-500">ยังไม่ได้เลือกโต๊ะ</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">ราคารวมทั้งสิ้น:</span>
+                        <span id="summary-price" class="font-bold text-emerald-400 text-lg">0 ฿</span>
+                    </div>
+                </div>
+
+                <form id="booking-form" class="space-y-3" onsubmit="event.preventDefault(); handlePayment();">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">ชื่อผู้จอง</label>
+                        <input type="text" id="cust-name" required placeholder="เช่น คุณสมชาย ใจดี" class="w-full bg-gray-800 border border-gray-750 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">เบอร์โทรศัพท์</label>
+                        <input type="tel" id="cust-phone" required placeholder="เช่น 0876123666" 
+                               oninput="validatePhone(this);" 
+                               class="w-full bg-gray-800 border border-gray-750 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 text-white">
+                        <p id="phone-error" class="text-rose-500 text-xs mt-1 hidden animate-pulse">⚠️ กรุณาใส่เฉพาะตัวเลข 0-9 เท่านั้น</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">จำนวนคนที่จะมา</label>
+                        <input type="number" id="cust-count" min="1" max="12" required placeholder="ระบุจำนวนคน" class="w-full bg-gray-800 border border-gray-750 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-yellow-500 text-white">
+                    </div>
+
+                    <button type="submit" id="btn-submit" disabled class="w-full mt-4 bg-gray-750 text-gray-400 font-bold py-3 rounded-xl cursor-not-allowed transition duration-200">
+                        กรุณาเลือกโต๊ะก่อนการชำระเงิน
+                    </button>
+                </form>
+
+                <div class="mt-6 pt-6 border-t border-gray-800">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-xs font-semibold text-gray-400">📍 ตำแหน่งโต๊ะบนแผนผังร้าน</h3>
+                        <div class="flex gap-1 bg-gray-800 p-1 rounded-lg text-[11px] font-bold">
+                            <button type="button" onclick="zoomMap(0.15)" class="px-2.5 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white">+</button>
+                            <button type="button" onclick="zoomMap(-0.15)" class="px-2.5 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white">-</button>
+                            <button type="button" onclick="resetZoom()" class="px-2 py-1 bg-gray-900 hover:bg-gray-700 rounded text-yellow-500">RESET</button>
+                        </div>
+                    </div>
+                    
+                    <div class="relative w-full aspect-square max-w-[340px] mx-auto bg-gray-950 rounded-xl overflow-hidden border border-gray-850 shadow-inner">
+                        <div id="zoom-container" class="w-full h-full relative origin-center transition-transform duration-300 ease-out hover:scale-120 cursor-zoom-in">
+                            <img id="floor-plan-img" src="plan.jpg" alt="RAO Srinakarin Floor Plan" class="w-full h-auto opacity-90">
+                            
+                            <div id="map-highlight" class="absolute w-6 h-6 bg-amber-500 border-2 border-white rounded-full hidden animate-ping opacity-75 pointer-events-none"></div>
+                            <div id="map-highlight-solid" class="absolute w-6 h-6 bg-amber-500 border-2 border-white rounded-full hidden shadow-lg flex items-center justify-center text-[9px] text-gray-950 font-bold pointer-events-none"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="payment-section" class="hidden mt-6 pt-6 border-t border-gray-800 text-center animate-fade-in">
+                    <h3 class="text-sm font-semibold text-gray-300 mb-1">สแกน QR Code เพื่อชำระเงิน (PromptPay)</h3>
+                    <p id="paymentNote" class="text-xs text-yellow-400 font-bold mb-3"></p>
+                    
+                    <div class="bg-white p-3 inline-block rounded-xl mb-2">
+                        <img id="qr-image" src="" alt="PromptPay QR Code" class="w-48 h-48 mx-auto object-contain">
+                    </div>
+                    <p class="text-xs text-rose-400 font-medium mb-4">⚠️ กรุณาชำระเงินภายใน 5 นาทีเพื่อล็อกโต๊ะไว้</p>
+                    <button onclick="confirmBooking()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-gray-950 font-bold py-2.5 rounded-lg text-sm transition">
+                        ฉันชำระเงินเรียบร้อยแล้ว
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // กำหนด URL หลังบ้าน (เปลี่ยนเป็น Domain จริงเมื่อนำขึ้นเซิร์ฟเวอร์ยิงขึ้นคลาวด์)
+        const BACKEND_URL = "http://localhost:3000";
+
+        const concertPrices = {
+            'concert-1': 5800, 
+            'concert-2': 5000  
+        };
+
+        let selectedTable = null;
+        let currentScale = 1.0;
+        const bookedTables = [];
+
+        const tableCoordinates = {
+            '1':  { x: 63.8, y: 32.8 }, '5':  { x: 58.2, y: 32.8 }, '9':  { x: 52.6, y: 32.8 }, '13': { x: 47.0, y: 32.8 }, '17': { x: 41.4, y: 32.8 },
+            '2':  { x: 63.8, y: 38.6 }, '6':  { x: 58.2, y: 38.6 }, '10': { x: 52.6, y: 38.6 }, '14': { x: 47.0, y: 38.6 }, '18': { x: 41.4, y: 38.6 },
+            '3':  { x: 63.8, y: 44.2 }, '7':  { x: 58.2, y: 44.2 }, '11': { x: 52.6, y: 44.2 }, '15': { x: 47.0, y: 49.8 }, '19': { x: 41.4, y: 44.2 },
+            '4':  { x: 63.8, y: 49.8 }, '8':  { x: 58.2, y: 49.8 }, '12': { x: 52.6, y: 49.8 }, '16': { x: 47.0, y: 44.2 }, '20': { x: 41.4, y: 49.8 },
+            '21': { x: 35.8, y: 32.8 }, '22': { x: 35.8, y: 38.6 }, '23': { x: 34.0, y: 61.8 }, '24': { x: 34.0, y: 67.8 },
+            '25': { x: 29.2, y: 49.0 }, '26': { x: 29.2, y: 55.4 }, '27': { x: 29.2, y: 61.8 }, '28': { x: 29.2, y: 67.8 },
+            '29': { x: 22.4, y: 49.0 }, '30': { x: 22.4, y: 55.4 }, '31': { x: 22.4, y: 61.8 }, '32': { x: 22.4, y: 67.8 },
+            '33': { x: 15.8, y: 55.4 }, '34': { x: 15.8, y: 61.8 }, '35': { x: 15.8, y: 67.8 },
+            '36': { x: 28.5, y: 12.0 }, '38': { x: 23.3, y: 12.0 }, '40': { x: 18.2, y: 12.0 }, '42': { x: 13.0, y: 12.0 }, '44': { x: 8.0,  y: 12.0 },
+            '37': { x: 28.5, y: 18.0 }, '39': { x: 23.3, y: 18.0 }, '41': { x: 18.2, y: 18.0 }, '43': { x: 13.0, y: 18.0 }, '45': { x: 8.0,  y: 18.0 },
+            'B1': { x: 29.5, y: 25.0 }, 'B2': { x: 24.0, y: 25.0 }, 'B3': { x: 18.8, y: 25.0 },
+            'R5': { x: 29.5, y: 33.0 }, 'R6': { x: 24.0, y: 33.0 }, 'R7': { x: 18.8, y: 33.0 }, 'R8': { x: 14.8, y: 44.5 },
+            'R1': { x: 58.0, y: 63.0 }, 'R2': { x: 52.2, y: 61.8 }, 'R3': { x: 46.8, y: 63.8 }, 'R4': { x: 42.6, y: 68.8 },
+            'S1': { x: 84.0, y: 56.0 }, 'S2': { x: 84.0, y: 62.5 }, 'S3': { x: 84.0, y: 69.5 }, 'S4': { x: 78.5, y: 69.5 }, 'S5': { x: 72.8, y: 69.5 },
+            'F1': { x: 14.8, y: 81.5 }, 'F2': { x: 25.5, y: 81.5 }
+        };
+
+        function zoomMap(scaleOffset) {
+            const container = document.getElementById('zoom-container');
+            currentScale += scaleOffset;
+            if (currentScale < 1.0) currentScale = 1.0;
+            if (currentScale > 2.5) currentScale = 2.5;
+            container.style.transform = `scale(${currentScale})`;
+        }
+
+        function resetZoom() {
+            const container = document.getElementById('zoom-container');
+            currentScale = 1.0;
+            container.style.transform = `scale(1.0) translate(0%, 0%)`;
+        }
+
+        // 🔄 ฟังก์ชันดึงข้อมูลจากหลังบ้าน (ปรับปรุงให้มีระบบเซฟตี้)
+        async function refreshBookedTables() {
+            const concertId = document.getElementById('concert').value;
+            const bookingDate = document.getElementById('booking-date').value;
+
+            // เคลียร์ปุ่มเก่าบนหน้าเว็บออกก่อนเสมอ
+            clearTableZones();
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/booked-tables?concert_id=${concertId}&date=${bookingDate}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    bookedTables.length = 0; 
+                    data.bookedTables.forEach(table => bookedTables.push(table));
+                    
+                    initTables(); // วาดปุ่มโดยใช้ข้อมูลโต๊ะที่จองจากหลังบ้าน
+
+                    if (selectedTable && bookedTables.includes(selectedTable)) {
+                        resetSelection();
+                    }
+                } else {
+                    // หากหลังบ้านตอบกลับมาไม่สำเร็จ ให้วาดโต๊ะแบบไม่มีประวัติการจองไปก่อน
+                    initTables();
+                }
+            } catch (error) {
+                console.warn("⚠️ เชื่อมต่อหลังบ้านไม่สำเร็จ (ระบบรันโหมด Offline ให้ชั่วคราว):", error);
+                // 🛡️ระบบเซฟตี้: ถ้าหลังบ้านยังไม่เปิด ให้แสดงปุ่มโต๊ะทั้งหมดเป็นโต๊ะว่างไปก่อน หน้าเว็บจะได้ไม่โล่ง
+                bookedTables.length = 0;
+                initTables();
+            }
+        }
+
+        function clearTableZones() {
+            document.getElementById('karaoke-zone').innerHTML = '';
+            document.getElementById('sofa-zone').innerHTML = '';
+            document.getElementById('main-floor-zone').innerHTML = '';
+        }
+
+        function resetSelection() {
+            selectedTable = null;
+            document.getElementById('summary-table').innerText = `ยังไม่ได้เลือกโต๊ะ`;
+            document.getElementById('summary-price').innerText = `0 ฿`;
+            document.getElementById('map-highlight').classList.add('hidden');
+            document.getElementById('map-highlight-solid').classList.add('hidden');
+            document.getElementById('payment-section').classList.add('hidden');
+            
+            const submitBtn = document.getElementById('btn-submit');
+            submitBtn.disabled = true;
+            submitBtn.className = "w-full mt-4 bg-gray-750 text-gray-400 font-bold py-3 rounded-xl cursor-not-allowed transition duration-200";
+            submitBtn.innerText = "กรุณาเลือกโต๊ะก่อนการชำระเงิน";
+            resetZoom();
+        }
+
+        function initTables() {
+            const karaokeZone = document.getElementById('karaoke-zone');
+            for(let i=1; i<=10; i++) { createTableButton(karaokeZone, `V${i}`); }
+
+            const sofaZone = document.getElementById('sofa-zone');
+            for(let i=1; i<=5; i++) { createTableButton(sofaZone, `S${i}`); }
+
+            const mainFloor = document.getElementById('main-floor-zone');
+            const tableNumbers = [
+                '1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22',
+                '23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45',
+                'B1','B2','B3','R1','R2','R3','R4','R5','R6','R7','R8','F1','F2'
+            ];
+            tableNumbers.forEach(num => createTableButton(mainFloor, num));
+        }
+
+        function createTableButton(container, id) {
+            const btn = document.createElement('button');
+            btn.innerText = id;
+            btn.id = `tbl-${id}`;
+            
+            if(bookedTables.includes(id)) {
+                btn.className = "table-btn booked bg-rose-600 text-white text-xs font-bold p-2.5 rounded-lg opacity-60 cursor-not-allowed";
+                btn.disabled = true;
+            } else {
+                if (selectedTable === id) {
+                    btn.className = "table-btn bg-amber-500 text-gray-950 text-xs font-bold p-2.5 rounded-lg ring-4 ring-white";
+                } else {
+                    btn.className = "table-btn bg-emerald-500 text-gray-950 text-xs font-bold p-2.5 rounded-lg hover:bg-emerald-400";
+                }
+                btn.onclick = () => selectId(id);
+            }
+            container.appendChild(btn);
+        }
+
+        function selectId(id) {
+            if(selectedTable) {
+                const oldBtn = document.getElementById(`tbl-${selectedTable}`);
+                if(oldBtn && !bookedTables.includes(selectedTable)) {
+                    oldBtn.className = "table-btn bg-emerald-500 text-gray-950 text-xs font-bold p-2.5 rounded-lg hover:bg-emerald-400";
+                }
+            }
+
+            selectedTable = id;
+            const newBtn = document.getElementById(`tbl-${id}`);
+            if(newBtn) newBtn.className = "table-btn bg-amber-500 text-gray-950 text-xs font-bold p-2.5 rounded-lg ring-4 ring-white";
+
+            const currentConcert = document.getElementById('concert').value;
+            const currentPrice = concertPrices[currentConcert] || 5000;
+
+            document.getElementById('summary-table').innerText = `โต๊ะ ${id}`;
+            document.getElementById('summary-price').innerText = `${currentPrice.toLocaleString()} ฿`;
+
+            const highlightPing = document.getElementById('map-highlight');
+            const highlightSolid = document.getElementById('map-highlight-solid');
+            const zoomContainer = document.getElementById('zoom-container');
+            
+            if (tableCoordinates[id]) {
+                const coords = tableCoordinates[id];
+                
+                highlightPing.style.left = `${coords.x}%`;
+                highlightPing.style.top = `${coords.y}%`;
+                highlightPing.style.transform = 'translate(-50%, -50%)';
+                highlightPing.classList.remove('hidden');
+                
+                highlightSolid.style.left = `${coords.x}%`;
+                highlightSolid.style.top = `${coords.y}%`;
+                highlightSolid.style.transform = 'translate(-50%, -50%)';
+                highlightSolid.innerText = id;
+                highlightSolid.classList.remove('hidden');
+
+                const moveX = (50 - coords.x) * 1.8; 
+                const moveY = (50 - coords.y) * 1.8;
+                zoomContainer.style.transform = `scale(1.8) translate(${moveX}%, ${moveY}%)`;
+                currentScale = 1.8;
+            } else {
+                highlightPing.classList.add('hidden');
+                highlightSolid.classList.add('hidden');
+                zoomContainer.style.transform = 'scale(1) translate(0%, 0%)';
+                currentScale = 1.0;
+            }
+
+            const submitBtn = document.getElementById('btn-submit');
+            submitBtn.disabled = false;
+            submitBtn.className = "w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-gray-950 font-bold py-3 rounded-xl transition duration-200 cursor-pointer shadow-md text-center block";
+            submitBtn.innerText = "ดำเนินการชำระเงิน";
+        }
+
+        async function handlePayment() {
+            if (!selectedTable) {
+                alert('❌ กรุณาเลือกโต๊ะก่อนการชำระเงินครับ');
+                return;
+            }
+
+            const currentConcert = document.getElementById('concert').value;
+            const currentPrice = concertPrices[currentConcert] || 5000;
+            
+            const payload = {
+                table_id: selectedTable,
+                concert_id: currentConcert,
+                customer_name: document.getElementById('cust-name').value,
+                customer_phone: document.getElementById('cust-phone').value,
+                customer_count: parseInt(document.getElementById('cust-count').value),
+                booking_date: document.getElementById('booking-date').value
+            };
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/book-table`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+
+                if (!data.success) {
+                    alert(data.message);
+                    refreshBookedTables();
+                    return;
+                }
+
+                document.getElementById('payment-section').classList.remove('hidden');
+                
+                const qrImg = document.getElementById("qr-image");
+                qrImg.src = "my-promptpay.jpg"; 
+                
+                const noteText = document.getElementById("paymentNote");
+                if(noteText) {
+                    noteText.innerText = `👉 โต๊ะ ${selectedTable} ยอดโอนสุทธิ: ${currentPrice.toLocaleString()} บาท`;
+                }
+                
+                document.getElementById('payment-section').scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                alert("เกิดข้อผิดพลาดในการติดต่อเซิร์ฟเวอร์หลังบ้าน แต่คุณยังสามารถสแกนจ่ายเพื่อแจ้งทางร้านแบบเดิมได้ครับ");
+                // เผื่อหลังบ้านดับ กล่องชำระเงินก็ยังทำงานแบบเดิมให้ได้
+                document.getElementById('payment-section').classList.remove('hidden');
+                document.getElementById('qr-image').src = "my-promptpay.jpg";
+                if(document.getElementById("paymentNote")) {
+                    document.getElementById("paymentNote").innerText = `👉 โต๊ะ ${selectedTable} ยอดโอนสุทธิ: ${currentPrice.toLocaleString()} บาท`;
+                }
+            }
+        }
+
+        function validatePhone(input) {
+            const errorText = document.getElementById('phone-error');
+            if (/[^0-9]/.test(input.value)) {
+                errorText.classList.remove('hidden');
+                input.value = input.value.replace(/[^0-9]/g, '');
+            } else {
+                errorText.classList.add('hidden');
+            }
+            if (input.value.length > 10) {
+                input.value = input.value.substring(0, 10);
+            }
+        }
+
+        function confirmBooking() {
+            const name = document.getElementById('cust-name').value;
+            const phone = document.getElementById('cust-phone').value;
+            const date = document.getElementById('booking-date').value;
+
+            if (phone.length < 9 || phone.length > 10) {
+                alert("⚠️ กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง (9-10 หลัก)");
+                return false;
+            }
+
+            alert(`🎉 แจ้งชำระเงินสำเร็จ!\n\nระบบได้รับข้อมูลแล้ว รอยืนยันโต๊ะ ${selectedTable} ของคุณ ${name} ในวันที่ ${date}`);
+            window.location.reload();
+        }
+
+        document.getElementById('concert').addEventListener('change', refreshBookedTables);
+        document.getElementById('booking-date').addEventListener('change', refreshBookedTables);
+        
+        window.addEventListener('DOMContentLoaded', refreshBookedTables);
+    </script>
+</body>
+</html>
